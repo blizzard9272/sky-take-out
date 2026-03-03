@@ -12,6 +12,7 @@ public interface EmployeeMapper {
      * @param username
      * @return
      */
+    // 通过注解的方式编写一个select SQL语句
     @Select("select * from employee where username = #{username}")
     Employee getByUsername(String username);
 

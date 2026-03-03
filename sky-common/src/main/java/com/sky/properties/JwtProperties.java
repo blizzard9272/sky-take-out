@@ -4,6 +4,7 @@ import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
+// 提示到properties文件中找sky.jwt下的相关信息
 @Component
 @ConfigurationProperties(prefix = "sky.jwt")
 @Data
