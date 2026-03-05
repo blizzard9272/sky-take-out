@@ -9,6 +9,7 @@ import java.util.List;
 
 /**
  * 封装分页查询结果
+ * 所有的分页查询结果同意封装成PageResult对象，返回给前端时封装到data参数当中
  */
 @Data
 @AllArgsConstructor
