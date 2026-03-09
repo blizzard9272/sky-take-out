@@ -92,6 +92,11 @@ public class CategoryController {
         return Result.success(pageResult);
     }
 
+    /**
+     * 删除分类
+     * @param id
+     * @return
+     */
     @DeleteMapping
     public Result deleteById(Long id){
         log.info("删除分类：{}", id);
