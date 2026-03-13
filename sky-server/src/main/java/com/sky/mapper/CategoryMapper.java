@@ -50,4 +50,12 @@ public interface CategoryMapper {
      * @param id
      */
     void deleteById(Long id);
+
+    /**
+     * 查询所有分类
+     * @param type
+     * @return
+      */
+    List<Category> list(Integer type);
+
 }

@@ -43,5 +43,15 @@
     <delete id="deleteById" parameterType="java.lang.Long">
         delete from category where id = #{id}
     </delete>
+
+    <select id="list" resultType="com.sky.entity.Category">
+        select * from category
+        where status = 1
+        <if test="type != null">
+            and type = #{type}
+        </if>
+        order by sort asc,create_time desc
+    </select>
+
 </mapper>
 
