@@ -12,9 +12,11 @@ import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/admin/dish")
@@ -25,6 +27,13 @@ public class DishController {
     private DishService dishService;
 
     /**
+     * 在新增菜品、修改菜品、删除菜品和启售等操作时，涉及到菜品数据的变更，需要将redis中相关的缓存数据进行删除，以保证数据的一致性
+     */
+    @Autowired
+    private RedisTemplate redisTemplate;
+
+
+    /**
      * 新增口味和对应的口味
      * @param dishDTO
      */
@@ -33,6 +42,10 @@ public class DishController {
     public Result save(@RequestBody DishDTO dishDTO){
         log.info("新增菜品：{}",dishDTO);
         dishService.saveWithFlavor(dishDTO);
+
+        // 清理缓存数据
+        String key = "dish_" + dishDTO.getCategoryId();
+        clearCache(key);
         return Result.success();
     }
 
@@ -64,6 +77,9 @@ public class DishController {
     public Result delete(@RequestParam List<Long> ids){
         log.info("批量删除菜品id列表：{}",ids);
         dishService.deleteBatch(ids);
+
+        // 将所有菜品缓存数据清理掉，所有以dish_开头的key都删除掉
+        clearCache("dish_*");
         return Result.success();
     }
 
@@ -91,6 +107,10 @@ public class DishController {
     public Result update(@RequestBody DishDTO dishDTO){
         log.info("修改菜品：{}",dishDTO);
         dishService.updateWithFlavor(dishDTO);
+
+        // 所有的缓存数据都清理掉，所有以dish_开头的key都删除掉
+        clearCache("dish_*");
+
         return Result.success();
     }
 
@@ -105,6 +125,9 @@ public class DishController {
     public Result startOrStop(@PathVariable Integer status, Long id) {
         log.info("菜品起售停售：{}，id：{}",status,id);
         dishService.startOrStop(status, id);
+
+        // 所有的缓存数据都清理掉，所有以dish_开头的key都删除掉（为了避免再查询，将所有的缓存都清理掉）
+        clearCache("dish_*");
         return Result.success();
     }
 
@@ -124,5 +147,14 @@ public class DishController {
         List<DishVO> list = dishService.listWithFlavor(dish);
 
         return Result.success(list);
+    }
+
+    /**
+     * 清理缓存数据
+     * @param pattern
+     */
+    private void clearCache(String pattern) {
+        Set keys = redisTemplate.keys(pattern);
+        redisTemplate.delete(keys);
     }
 }
