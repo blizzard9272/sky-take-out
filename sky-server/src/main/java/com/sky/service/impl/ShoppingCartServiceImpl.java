@@ -5,6 +5,7 @@ import com.sky.dto.ShoppingCartDTO;
 import com.sky.entity.Dish;
 import com.sky.entity.Setmeal;
 import com.sky.entity.ShoppingCart;
+import com.sky.exception.ShoppingCartBusinessException;
 import com.sky.mapper.DishMapper;
 import com.sky.mapper.SetMealMapper;
 import com.sky.mapper.ShoppingCartMapper;
@@ -75,8 +76,32 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
             shoppingCartMapper.insert(shoppingCart);
         }
 
+    }
 
+    /**
+     * 减少购物车中菜品或者套餐的数量
+     * @param shoppingCartDTO
+     */
+    @Override
+    public void subShoppingCart(ShoppingCartDTO shoppingCartDTO) {
+        //
+        ShoppingCart shoppingCart = new ShoppingCart();
+        BeanUtils.copyProperties(shoppingCartDTO,shoppingCart);
+        Long userId = BaseContext.getCurrentId();
+        shoppingCart.setUserId(userId);
 
+        ShoppingCart cart = shoppingCartMapper.list(shoppingCart).get(0);
+
+        if(cart.getNumber() > 1) {  // 菜品数量大于1，在原来数量基础上-1
+            cart.setNumber(cart.getNumber() - 1);
+            shoppingCartMapper.updateNumberById(cart);
+        }else if(cart.getNumber() == 1) {
+            // 数量等于1，则从购物车中删除该菜品
+            shoppingCartMapper.deleteShoppingCart(shoppingCart);
+        }else {
+            // 数量不可能小于1，如果出现了，说明有问题，抛出异常
+            throw new ShoppingCartBusinessException("购物车中菜品数量异常");
+        }
     }
 
     /**
@@ -92,4 +117,16 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
         List<ShoppingCart> list = shoppingCartMapper.list(shoppingCart);
         return list;
     }
+
+    /**
+     * 清空购物车
+     */
+    @Override
+    public void cleanShoppingCart() {
+        // 根据当前用户id清空购物车
+        Long userId = BaseContext.getCurrentId();
+        shoppingCartMapper.clean(userId);
+    }
+
+
 }

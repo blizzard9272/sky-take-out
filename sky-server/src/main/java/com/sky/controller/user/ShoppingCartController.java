@@ -35,6 +35,19 @@ public class ShoppingCartController {
     }
 
     /**
+     * 减少购物车中菜品或者套餐的数量
+     * @param shoppingCartDTO
+     * @return
+     */
+    @PostMapping("/sub")
+    @ApiOperation("减少购物车中菜品或者套餐的数量")
+    public Result sub(@RequestBody ShoppingCartDTO shoppingCartDTO) {
+        log.info("减少购物车：{}", shoppingCartDTO);
+        shoppingCartService.subShoppingCart(shoppingCartDTO);
+        return Result.success();
+    }
+
+    /**
     * 查询购物车列表
     * @return
     */
@@ -44,4 +57,16 @@ public class ShoppingCartController {
         List<ShoppingCart> list = shoppingCartService.listShoppingCart();
         return Result.success(list);
     }
+
+    /**
+     * 清空购物车
+     * @return
+     */
+    @DeleteMapping("/clean")
+    @ApiOperation("清空购物车")
+    public Result clean(){
+        shoppingCartService.cleanShoppingCart();
+        return Result.success();
+    }
+
 }
