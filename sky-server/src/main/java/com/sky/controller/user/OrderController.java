@@ -87,4 +87,29 @@ public class OrderController {
         PageResult pageResult = orderService.PageQueryOrders(page , pageSize, status);
         return Result.success(pageResult);
     }
+
+    /**
+     * 用户取消订单
+     * @param id
+     * @return
+     */
+    @PutMapping("/cancel/{id}")
+    @ApiOperation("用户取消订单")
+    public Result cancel(@PathVariable Long id) throws Exception {
+        log.info("用户取消订单了，订单id为：{}", id);
+        orderService.userCancelById(id);
+        return Result.success();
+    }
+
+
+    /**
+     * 再来一单
+     * @return
+     */
+    @PostMapping("/repetition/{id}")
+    @ApiOperation("再来一单")
+    public Result repetition(@PathVariable Long id) {
+        orderService.repetition(id);
+        return Result.success();
+    }
 }
