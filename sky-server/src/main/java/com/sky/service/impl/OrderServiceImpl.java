@@ -238,10 +238,22 @@ public class OrderServiceImpl implements OrderService {
         // 根据订单id查询订单
         Orders order = orderMapper.getById(id);
 
+        // 如果订单不存在，抛出业务异常
+        if(order == null) {
+            throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
+        }
+
+        Map map = new HashMap();
+        map.put("type",2);          // type为1表示来单提醒 2表示客户催单
+        map.put("orderId", order.getId());
+        map.put("content", "订单号：" + order.getNumber() + "，客户催单了！");
+
         // 只有当订单处于待接单状态时，才允许用户催单
         if(order.getStatus() == Orders.TO_BE_CONFIRMED){
             // 这里我们就简单地打印一条日志，模拟一下催单的效果
-            log.info("用户催单了，订单id为：{}", id);
+            // log.info("用户催单了，订单id为：{}", id);
+            String json = JSON.toJSONString(map);
+            webSocketServer.sendToAllClient(json);
         }else {
             throw new OrderBusinessException("当前订单状态不允许催单");
         }
