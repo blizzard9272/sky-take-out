@@ -5,14 +5,19 @@ import com.sky.entity.Orders;
 import com.sky.mapper.OrderMapper;
 import com.sky.mapper.UserMapper;
 import com.sky.service.ReportService;
-import com.sky.vo.OrderReportVO;
-import com.sky.vo.SalesTop10ReportVO;
-import com.sky.vo.TurnoverReportVO;
-import com.sky.vo.UserReportVO;
+import com.sky.service.WorkspaceService;
+import com.sky.vo.*;
 import org.apache.commons.lang.StringUtils;
+import org.apache.poi.xssf.usermodel.XSSFRow;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import javax.servlet.ServletOutputStream;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -29,6 +34,8 @@ public class ReportServiceImpl implements ReportService {
     private OrderMapper orderMapper;
     @Autowired
     private UserMapper userMapper;
+    @Autowired
+    private WorkspaceService workspaceService;
 
     /**
      * 统计指定时间区间的内的营业额数据
@@ -62,8 +69,8 @@ public class ReportServiceImpl implements ReportService {
             // select sum(amount) from orders where status = 5 and order_time >= beginTime and complete_time <= endTime
             Map map = new HashMap<>();
             map.put("status", Orders.COMPLETED);
-            map.put("beginTime", beginTime);
-            map.put("endTime", endTime);
+            map.put("begin", beginTime);
+            map.put("end", endTime);
             // 这里拿到每一天的营业额放到turnoverList集合中，方便后面构建TurnoverReportVO对象
             Double turnover = orderMapper.sumByMap(map);
             // 判断当天营业额是否为null，如果为null则设置为0.0
@@ -109,12 +116,12 @@ public class ReportServiceImpl implements ReportService {
             LocalDateTime endTime = LocalDateTime.of(date, LocalTime.MAX);
 
             Map map = new HashMap<>();
-            map.put("endTime", endTime);
+            map.put("end", endTime);
 
             // 统计总用户数量
             Integer totalUser = userMapper.countByMap(map);
 
-            map.put("beginTime", beginTime);
+            map.put("begin", beginTime);
             // 统计新用户数量
             Integer newUser = userMapper.countByMap(map);
 
@@ -145,12 +152,11 @@ public class ReportServiceImpl implements ReportService {
         // 存放从begin到end范围内的每天的日期
         List<LocalDate> dateList = new ArrayList<>();
 
-        LocalDate current = begin;
-        dateList.add(current);
-        while(!current.equals(end)){
+        dateList.add(begin);
+        while(!begin.equals(end)){
             // 日期计算，计算指定日期的后一天对应的日期
-            current = current.plusDays(1);
-            dateList.add(current);
+            begin = begin.plusDays(1);
+            dateList.add(begin);
         }
 
         // 遍历dateList集合，统计每天的订单总数和有效订单数
@@ -220,6 +226,75 @@ public class ReportServiceImpl implements ReportService {
     }
 
     /**
+     * 导出运营数据报表
+     * @param response
+     */
+    @Override
+    public void exportBusinessData(HttpServletResponse response) {
+        // 1. 查询数据库，获取营业数据
+        LocalDate dateBegin = LocalDate.now().minusDays(30);
+        LocalDate dateEnd = LocalDate.now().minusDays(1);
+
+        LocalDateTime begin = LocalDateTime.of(dateBegin, LocalTime.MIN);
+        LocalDateTime end = LocalDateTime.of(dateEnd, LocalTime.MAX);
+
+        // 查询概览数据
+        BusinessDataVO businessDataVO = workspaceService.getBusinessData(begin, end);
+
+        // 2. 通过POI将营业数据写入Excel文件中
+
+        // 将Excel模板文件加载到内存中，获取输入流对象
+        ClassLoader loader = this.getClass().getClassLoader();
+        InputStream in = loader.getResourceAsStream("template/运营数据报表模板.xlsx");
+
+        try {
+            // 基于模板文件创建一个新的Excel文件对象
+            XSSFWorkbook excel = new XSSFWorkbook(in);
+
+            // 填充数据——时间
+            XSSFSheet sheet = excel.getSheet("Sheet1");
+            sheet.getRow(1).getCell(1).setCellValue("时间： " + dateBegin + " ~ " + dateEnd);
+
+            // 获得第四行
+            sheet.getRow(3).getCell(2).setCellValue(businessDataVO.getTurnover());
+            sheet.getRow(3).getCell(4).setCellValue(businessDataVO.getOrderCompletionRate());
+            sheet.getRow(3).getCell(6).setCellValue(businessDataVO.getNewUsers());
+
+            // 获得第五行
+            sheet.getRow(4).getCell(2).setCellValue(businessDataVO.getValidOrderCount());
+            sheet.getRow(4).getCell(4).setCellValue(businessDataVO.getUnitPrice());
+
+            // 填充明细数据
+            for(int i = 0 ; i < 30 ; i++){
+                LocalDate date = dateBegin.plusDays(i);
+                // 查询某一天的营业数据，查询条件是当天的开始时间和结束时间
+                BusinessDataVO data = workspaceService.getBusinessData(LocalDateTime.of(date, LocalTime.MIN), LocalDateTime.of(date, LocalTime.MAX));
+
+                // Excel表中从第八行开始填充
+                XSSFRow row = sheet.getRow(7 + i);
+                row.getCell(1).setCellValue(date.toString());
+                row.getCell(2).setCellValue(data.getTurnover());
+                row.getCell(3).setCellValue(data.getValidOrderCount());
+                row.getCell(4).setCellValue(data.getOrderCompletionRate());
+                row.getCell(5).setCellValue(data.getUnitPrice());
+                row.getCell(6).setCellValue(data.getNewUsers());
+            }
+
+
+            // 3. 将Excel文件通过输出流写入到浏览器中，提供给用户下载
+            ServletOutputStream out = response.getOutputStream();
+            excel.write(out);
+
+            // 关闭资源
+            out.close();
+            excel.close();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+    }
+
+    /**
      * 根据条件统计订单数量
      * @param beginTime
      * @param endTime
@@ -228,8 +303,8 @@ public class ReportServiceImpl implements ReportService {
      */
     private Integer getOrderCount(LocalDateTime beginTime, LocalDateTime endTime, Integer status){
         Map map = new HashMap<>();
-        map.put("beginTime", beginTime);
-        map.put("endTime", endTime);
+        map.put("begin", beginTime);
+        map.put("end", endTime);
         map.put("status", status);
 
         return orderMapper.countOrderByMap(map);

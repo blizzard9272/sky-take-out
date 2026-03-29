@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.servlet.http.HttpServletResponse;
+import java.net.http.HttpResponse;
 import java.time.LocalDate;
 
 /**
@@ -93,5 +95,18 @@ public class ReportController {
             LocalDate end)  {
         log.info("请求热销榜单top10 - begin: {}, end: {}", begin, end);
         return Result.success(reportService.getSalesTop10(begin, end));
+    }
+
+    /**
+     * 数据导出接口
+     * @param response
+     * @return
+     */
+    @GetMapping("/export")
+    @ApiOperation("数据导出接口")
+    public void export(HttpServletResponse response) {
+        // 导出数据的接口
+        reportService.exportBusinessData(response);
+        
     }
 }

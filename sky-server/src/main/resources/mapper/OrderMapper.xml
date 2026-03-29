@@ -61,26 +61,26 @@
             <if test="status != null">
                 and status = #{status}
             </if>
-            <if test="beginTime != null">
-                and order_time &gt;= #{beginTime}
+            <if test="begin != null">
+                and order_time &gt; #{begin}
             </if>
-            <if test="endTime != null">
-                and order_time &lt;= #{endTime}
+            <if test="end != null">
+                and order_time &lt; #{end}
             </if>
         </where>
     </select>
 
     <select id="countOrderByMap" resultType="java.lang.Integer">
-        select count(*) from orders
+        select count(id) from orders
         <where>
+            <if test="begin != null">
+                and order_time &gt; #{begin}
+            </if>
+            <if test="end != null">
+                and order_time &lt; #{end}
+            </if>
             <if test="status != null">
                 and status = #{status}
-            </if>
-            <if test="beginTime != null">
-                and order_time &gt;= #{beginTime}
-            </if>
-            <if test="endTime != null">
-                and order_time &lt;= #{endTime}
             </if>
         </where>
     </select>
@@ -90,10 +90,10 @@
         from order_detail od, orders o
         where od.order_id = o.id and o.status = 5
         <if test="begin != null">
-            and o.order_time &gt;= #{begin}
+            and o.order_time &gt; #{begin}
         </if>
         <if test="end != null">
-            and o.order_time &lt;= #{end}
+            and o.order_time &lt; #{end}
         </if>
         group by od.name
         order by number desc
